@@ -2,7 +2,7 @@
 # The Configuration object contains all the parameters needed for the training
 
 import configparser
-from model import networks,losses
+
 
 class Configuration:
     def __init__(self, file_path='config.ini'):
@@ -12,6 +12,7 @@ class Configuration:
         # FILE
         self.directory = self.config.get("Files","directory")
         self.data_path = self.config.get("Files","data_path")
+        self.expname = self.config.get("Files","experiment")
   
         
 
