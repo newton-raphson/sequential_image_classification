@@ -31,9 +31,10 @@ def load_data(data_path, config, device):
 
     # get train_x
     train_x = np.array(data.get("train_set_x"))
+    train_x = train_x[:,0:10000]
     # get train_y
     train_y = np.array(data.get("train_set_y"))
-
+    train_y = train_x[:10000]
     print(f"The length of train_X is {len(train_x)}")
     print(f"The length of train_Y is {len(train_y)}")
     # we need to transpose train_x 
@@ -46,7 +47,8 @@ def load_data(data_path, config, device):
     valid_x = np.array(data.get("valid_set_x"))
     # get train_y
     valid_y = np.array(data.get("valid_set_y"))
-
+    valid_x = valid_x[:,0:10000]
+    valid_y = valid_y[:10000]
     print(f"The length of valid_X is {len(train_x)}")
     print(f"The length of valid_Y is {len(train_y)}")
 
@@ -55,10 +57,10 @@ def load_data(data_path, config, device):
     valid_x= valid_x.reshape(-1,1,250,100)
 
     print("We are here bro")
-    X = torch.tensor(train_x, dtype=torch.float32)
-    Y = torch.tensor(train_y, dtype=torch.float32)
-    val_X = torch.tensor(valid_x, dtype=torch.float32)
-    val_Y = torch.tensor(valid_y, dtype=torch.float32)
+    X = torch.tensor(train_x[:1000], dtype=torch.float32)
+    Y = torch.tensor(train_y[:1000], dtype=torch.float32)
+    val_X = torch.tensor(valid_x[:1000], dtype=torch.float32)
+    val_Y = torch.tensor(valid_y[:1000], dtype=torch.float32)
     print("We are here bro")
 
     training_dataset = torch.utils.data.TensorDataset(X, Y)
