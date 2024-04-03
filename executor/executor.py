@@ -10,11 +10,11 @@ import matplotlib.pyplot as plt
 import pickle
 from collections import OrderedDict
 import torch.nn as nn
-from model.networks import Encoder,Classifier
+
 from utils.pickling import CPU_Unpickler
 import glob
 from torch.optim.lr_scheduler import StepLR
-from model.networks import Classifier,Encoder
+from model.networks import AutoEncoder,Encoder
 
 
 class Executor:
@@ -45,7 +45,7 @@ class Executor:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # define the model
-        self.model = Classifier()
+        self.model = AutoEncoder()
         self.loss = torch.nn.CrossEntropyLoss()
 
         print(f"Cuda is {torch.cuda.is_available()}")
@@ -80,16 +80,17 @@ class Executor:
             train_loss = 0
             val_loss = 0
             torch.cuda.empty_cache()
-            for batch, (x_batch, y_batch) in enumerate(training_dataloader):
-                y_compute = self.model(x_batch.to(self.device))
-                loss = self.loss(y_compute, y_batch.to(self.device))
+            for batch, (x_batch, _) in enumerate(training_dataloader):
+                x_compute = self.model(x_batch.to(self.device))
+                print(f"x_compute shape is {x_compute.shape}")
+                print(f"x_batch shape is {x_batch.shape}")
+                loss = torch.nn.functional.mse_loss(x_compute,x_batch)
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
                 train_loss += loss.item()
                 del x_batch
-                del y_batch
-                del y_compute
+                del x_compute
             # take a step in the scheduler
             scheduler.step()
             torch.cuda.empty_cache()
@@ -98,7 +99,7 @@ class Executor:
             val_loss = 0
             self.model.eval()
             for batch, (x_batch, y_batch) in enumerate(validation_dataloader):
-                loss = self.loss(self.model(x_batch.to(self.device)), y_batch.to(self.device))
+                loss = torch.nn.functional.mse_loss(self.model(x_batch.to(self.device)), x_batch)
                 val_loss += loss.item()
             val_loss = val_loss/len(validation_dataloader)
             val_loss_per_epoch.append(val_loss)
@@ -115,6 +116,7 @@ class Executor:
                 # save the model
                 # code to save the model 
                 Executor.save_model(self.model, optimizer, loss_per_epoch, i,best_val_loss,val_loss_per_epoch,self.model_save_path,best=True)
+                Executor.save_model(self.model.encoder, optimizer, loss_per_epoch, i,best_val_loss,val_loss_per_epoch,self.model_save_path,best=False)
             else:
                 # increase the counter by 1
                 counter += 1
@@ -154,7 +156,7 @@ class Executor:
                 'epoch': epoch,
                 'model_state_dict': model.state_dict(),
             }
-            checkpoint_path = os.path.join(save_path, f"model_epoch{epoch}.pkl")
+            checkpoint_path = os.path.join(save_path, f"model_encoder_epoch{epoch}.pkl")
         with open(checkpoint_path, 'wb') as checkpoint_file:
             pickle.dump(checkpoint_data, checkpoint_file)   
     @staticmethod
@@ -245,87 +247,6 @@ class Executor:
                 new_state_dict[name] = v
             model.load_state_dict(new_state_dict)
             return model
-   
-        volume_size = (self.config.cubesize, self.config.cubesize, self.config.cubesize)  # Adjust this based on your requirements
-        spacing = (2/volume_size[0], 2/volume_size[1], 2/volume_size[2])
-        x = torch.linspace(-1, 1, volume_size[0], device=self.device)
-        xx, yy, zz = torch.meshgrid(x, x, x, indexing='ij')
-        # Reshape the coordinates to create a DataFrame
-        coordinates = torch.stack((xx, yy, zz), dim=-1).reshape(-1, 3)
-
-
-        ###########################################################################################
-        volume_size = (self.config.cubesize, self.config.cubesize, self.config.cubesize)  # Adjust this based on your requirements
-
-        # Adjust the spacing based on the provided minimum and maximum values
-        # spacing = (
-        #     (1.818538e+03 - (-3.437500e+02)) / volume_size[0],
-        #     (2.970000e+02 - (-9.598353e+02)) / volume_size[1],
-        #     (9.867585e+02 - (-4.425856e+03)) / volume_size[2]
-        # )
-
-        # # Generate coordinates using torch.linspace and meshgrid
-        # x = torch.linspace(-3.437500e+02, 1.818538e+03, volume_size[0])
-        # y = torch.linspace(-9.598353e+02, 2.970000e+02, volume_size[1])
-        # z = torch.linspace(-4.425856e+03, 9.867585e+02, volume_size[2])
-        # Set new limits
-        # new_limits = (-1, 1)
-
-        # spacing = (
-        #     (new_limits[1] - new_limits[0]) / volume_size[0],
-        #     (new_limits[1] - new_limits[0]) / volume_size[1],
-        #     (new_limits[1] - new_limits[0]) / volume_size[2]
-        # )
-
-        # # Generate coordinates using torch.linspace and meshgrid
-        # x = torch.linspace(new_limits[0], new_limits[1], volume_size[0])
-        # y = torch.linspace(new_limits[0], new_limits[1], volume_size[1])
-        # z = torch.linspace(new_limits[0], new_limits[1], volume_size[2])
-
-
-        # xx, yy, zz = torch.meshgrid(x, y, z, indexing='ij')
-
-        # # Reshape the coordinates to create a DataFrame
-        # coordinates = torch.stack((xx, yy, zz), dim=-1).reshape(-1, 3).to(self.device)
-        ###########################################################################################
-        batch_size = self.config.ppbatchsize  # Adjust based on available memory
-        sdf_values = []
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=self.config.lr)
-        print("Loading the best model\n\n")
-        print(f"Loading model from {self.model_save_path}")
-        print("\n\n")
-        # self.model,_, epoch, _, _, _ = Executor.load_model(self.model,optimizer,self.model_save_path,True)
-        self.model,epoch= Executor.load_model(self.model,optimizer,self.model_save_path,False)
-        print(f"Model loaded from epoch {epoch}")
-        # self.model.eval()
-        # batch_size=1000
-        with torch.no_grad():
-            for i in range(0, coordinates.shape[0], batch_size):
-                print(f"\nProcessing batch {i//batch_size}")
-                batch_coordinates = coordinates[i:i + batch_size]
-                batch_sdf = self.model(batch_coordinates.to(self.device)).to(torch.float32)
-                # type(batch_sdf)
-                sdf_values.append(batch_sdf)
-                batch_sdf = batch_sdf.ravel()
-                # how to reduce ram consumption here
-                del batch_coordinates
-
-        sdf_values = torch.cat(sdf_values)
-        # Reshape the SDF values array to match the volume shape
-        sdf_values = sdf_values.cpu().numpy().reshape(volume_size)
-        verts, faces, normals, _ = marching_cubes(sdf_values, level=0.0,spacing=spacing)
-        print(f"Mesh generated for cube size {self.config.cubesize}")
-        if self.config.rescale:
-            # save the mesh
-            centroid = np.mean(verts)
-            verts -= centroid
-        # save the mesh
-        mesh = trimesh.Trimesh(vertices=verts, faces=faces, vertex_normals=normals)
-        # mesh.export(os.path.join(save_directory, f"output_mesh{i}.stl"), file_type='stl')
-        path_to_save = os.path.join(self.postprocess_save_path, f"{self.geometry_name}_resconstructed_{epoch}_cube_{self.config.cubesize}.stl")
-        print(f"Saving mesh to {path_to_save}")
-        mesh.export(path_to_save, file_type='stl') 
-        plot_stl(path_to_save,os.path.join(self.postprocess_save_path, f"{self.geometry_name}_resconstructed_{epoch}_cube_{self.config.cubesize}.gif"))
     def run(self):
         print("Running the executor")
         self.train()
