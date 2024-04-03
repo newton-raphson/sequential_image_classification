@@ -81,13 +81,15 @@ class Executor:
             val_loss = 0
             torch.cuda.empty_cache()
             for batch, (x_batch, y_batch) in enumerate(training_dataloader):
-                loss = self.loss(x_batch.to(self.device), y_batch.to(self.device))
+                y_compute = self.model(x_batch.to(self.device))
+                loss = self.loss(y_compute, y_batch.to(self.device))
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
                 train_loss += loss.item()
                 del x_batch
                 del y_batch
+                del y_compute
             # take a step in the scheduler
             scheduler.step()
             torch.cuda.empty_cache()
@@ -96,7 +98,7 @@ class Executor:
             val_loss = 0
             self.model.eval()
             for batch, (x_batch, y_batch) in enumerate(validation_dataloader):
-                loss = self.loss(x_batch.to(self.device), y_batch.to(self.device))
+                loss = self.loss(self.model(x_batch.to(self.device)), y_batch.to(self.device))
                 val_loss += loss.item()
             val_loss = val_loss/len(validation_dataloader)
             val_loss_per_epoch.append(val_loss)

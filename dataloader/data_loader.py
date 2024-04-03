@@ -34,25 +34,37 @@ def load_data(data_path, config, device):
     # get train_y
     train_y = np.array(data.get("train_set_y"))
 
+    print(f"The length of train_X is {len(train_x)}")
+    print(f"The length of train_Y is {len(train_y)}")
     # we need to transpose train_x 
     train_x = train_x.T
+    train_x= train_x.reshape(-1,1,250,100)
+
+    print(f"The shape is {train_x.shape}")
 
         # get train_x
     valid_x = np.array(data.get("valid_set_x"))
     # get train_y
     valid_y = np.array(data.get("valid_set_y"))
 
+    print(f"The length of valid_X is {len(train_x)}")
+    print(f"The length of valid_Y is {len(train_y)}")
+
     # we need to transpose train_x 
     valid_x = valid_x.T
+    valid_x= valid_x.reshape(-1,1,250,100)
 
+    print("We are here bro")
     X = torch.tensor(train_x, dtype=torch.float32)
     Y = torch.tensor(train_y, dtype=torch.float32)
     val_X = torch.tensor(valid_x, dtype=torch.float32)
     val_Y = torch.tensor(valid_y, dtype=torch.float32)
+    print("We are here bro")
 
     training_dataset = torch.utils.data.TensorDataset(X, Y)
     training_dataloader = torch.utils.data.DataLoader(training_dataset, batch_size=config.batchsize, shuffle=True)
     validation_dataset = torch.utils.data.TensorDataset(val_X, val_Y)
     validation_dataloader = torch.utils.data.DataLoader(validation_dataset, batch_size=config.batchsize, shuffle=True)
     
+    print("We are here bro")
     return training_dataloader, validation_dataloader

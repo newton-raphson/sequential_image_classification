@@ -12,7 +12,7 @@ class Encoder(torch.nn.Module):
         # b,c,w,h = [1,16,61,23]
         self.conv3 = torch.nn.Conv2d(in_channels=16,out_channels=8,kernel_size=4,stride=2)
         # b,c,w,h = [1,8,29,10]
-        self.conv3 = torch.nn.Conv2d(in_channels=8,out_channels=1,kernel_size=2,stride=1)
+        self.conv4 = torch.nn.Conv2d(in_channels=8,out_channels=1,kernel_size=2,stride=1)
          # b,c,w,h = [1,1,28,9]
     def forward(self, x):
         x = torch.relu(self.conv1(x))
@@ -37,9 +37,12 @@ class Classifier(torch.nn.Module):
 
     def forward(self,x):
         latent = self.encoder(x)
+        print(f"{latent.shape}")
         latent = latent.view(-1,1)
+        out1 = self.fc1(latent)
+        out2 = self.fc2(out1)
         # returns the classification either 0 or 1
-        return self.sigmoid(self.fc2(self.fc1(latent)))
+        return self.sigmoid(out2)
 
 class AutoEncoder(torch.nn.Module):
     def __init__(self,image_size=(250,100),latent_dim=252):
