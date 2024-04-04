@@ -30,8 +30,8 @@ class Decoder(torch.nn.Module):
         self.image_size = image_size
         self.latent_dim = latent_dim
         # resize into [b,c,w,h] = [b,1,28,9]
-        self.deconv1 = torch.nn.ConvTranspose2d(in_channels=1, out_channels=8, kernel_size=2, stride=2, padding=0)
-        # resize into [b,c,w,h] = [b,1,28,9]
+        self.deconv1 = torch.nn.ConvTranspose2d(in_channels=1, out_channels=8, kernel_size=2, stride=1, padding=0)
+        # resize into [b,c,w,h] = [b,1,29,10]
         self.deconv2 = torch.nn.ConvTranspose2d(in_channels=8, out_channels=16, kernel_size=5, stride=2, padding=0)
         # resize into [b,c,w,h] = [b,1,61,23]
         self.deconv3 = torch.nn.ConvTranspose2d(in_channels=16, out_channels=8, kernel_size=(4,5), stride=2, padding=0)
@@ -66,7 +66,7 @@ class Classifier(torch.nn.Module):
         return self.sigmoid(out2)
 
 class AutoEncoder(torch.nn.Module):
-    def __init__(self,image_size=(250,100),latent_dim=50):
+    def __init__(self,image_size=(250,100),latent_dim=252):
         super(AutoEncoder,self).__init__()
         self.encoder = Encoder(image_size,latent_dim)
         self.decoder = Decoder(latent_dim,image_size)
@@ -74,4 +74,15 @@ class AutoEncoder(torch.nn.Module):
     def forward(self,x):
         return self.decoder(self.encoder(x))
 
-        
+class SequentialModel(torch.nn.Module):
+    def __init__(self, input_size=252, hidden_size=10, num_layers=5, output_size=1):
+        super(SequentialModel, self).__init__()
+        self.lstm = torch.nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
+        self.fc = torch.nn.Linear(hidden_size, output_size)
+    
+    def forward(self, x):
+        out, _ = self.lstm(x)
+
+        out = self.fc(out)  # Take the output of the last time step
+
+        return torch.sigmoid(out) 

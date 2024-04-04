@@ -13,9 +13,12 @@ class Configuration:
         self.directory = self.config.get("Files","directory")
         self.data_path = self.config.get("Files","data_path")
         self.expname = self.config.get("Files","experiment")
-  
-        
-
+        # Train Type
+        self.train_encoder = self.config.getboolean("Type","encoder")
+        if(not self.train_encoder):
+            self.ae_path = self.config.get("Type","ae_path")
+            self.hidden_size = self.config.getint("Type","hidden_size")
+            self.num_layers = self.config.getint("Type","num_layers")
 
         # TRAIN PARAMS
         self.lr = self.config.getfloat("Training", "lr")
@@ -25,5 +28,9 @@ class Configuration:
         self.checkpointing = self.config.getint("Training","checkpointing")
         self.contd = self.config.getboolean("Training","continue")
         self.patience = self.config.getint("Training","patience")
+
+        # POST PROCESS
+        self.post_process = self.config.getboolean("PostProcess","post_process")
+
     
     

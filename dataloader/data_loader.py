@@ -31,10 +31,10 @@ def load_data(data_path, config, device):
 
     # get train_x
     train_x = np.array(data.get("train_set_x"))
-    train_x = train_x[:,0:10000]
+    train_x = train_x[:,0:20000]/255.0
     # get train_y
     train_y = np.array(data.get("train_set_y"))
-    train_y = train_x[:10000]
+    train_y = train_y[:20000]
     print(f"The length of train_X is {len(train_x)}")
     print(f"The length of train_Y is {len(train_y)}")
     # we need to transpose train_x 
@@ -47,8 +47,8 @@ def load_data(data_path, config, device):
     valid_x = np.array(data.get("valid_set_x"))
     # get train_y
     valid_y = np.array(data.get("valid_set_y"))
-    valid_x = valid_x[:,0:10000]
-    valid_y = valid_y[:10000]
+    valid_x = valid_x[:,0:20000]/255.0
+    valid_y = valid_y[:20000]
     print(f"The length of valid_X is {len(train_x)}")
     print(f"The length of valid_Y is {len(train_y)}")
 
@@ -70,3 +70,39 @@ def load_data(data_path, config, device):
     
     print("We are here bro")
     return training_dataloader, validation_dataloader
+
+def load_test_data(data_path,config,device):
+    """
+    Load test data from a file and prepare it for evaluation.
+
+    Args:
+        data_path (str): The path to the data file.
+
+    Returns:
+        test_dataloader (torch.utils.data.DataLoader): The data loader for test data.
+    """
+    # Load data from the file
+    data = h5py.File(data_path, 'r')
+
+    # Get test_x
+    test_x = np.array(data.get("test_set_x"))
+    test_x = test_x[:, 0:20000] / 255.0  # Normalize if needed
+
+    # Get test_y
+    test_y = np.array(data.get("test_set_y"))
+    test_y = test_y[:20000]
+
+    # Transpose and reshape test_x
+    test_x = test_x.T
+    test_x = test_x.reshape(-1, 1, 250, 100)
+
+    # Convert to PyTorch tensors
+    X = torch.tensor(test_x[:1000], dtype=torch.float32)
+    Y = torch.tensor(test_y[:1000], dtype=torch.float32)
+
+    # Create a TensorDataset and DataLoader
+    test_dataset = torch.utils.data.TensorDataset(X, Y)
+    test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=config.batchsize, shuffle=False)
+
+    return test_dataloader
+
