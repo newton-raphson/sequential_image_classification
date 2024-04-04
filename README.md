@@ -50,11 +50,5 @@ post_process = True
 ```
 
 
-## Contributing
-
-Samundra Karki
-
-
-
 ## Courtesy
 Dr Soumik Sarkar
