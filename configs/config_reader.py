@@ -14,8 +14,8 @@ class Configuration:
         self.data_path = self.config.get("Files","data_path")
         self.expname = self.config.get("Files","experiment")
         # Train Type
-        self.train_encoder = self.config.getboolean("Type","encoder")
-        if(not self.train_encoder):
+        self.type = self.config.get("Type","type")
+        if(not self.type=="autoencoder"):
             self.ae_path = self.config.get("Type","ae_path")
             self.hidden_size = self.config.getint("Type","hidden_size")
             self.num_layers = self.config.getint("Type","num_layers")

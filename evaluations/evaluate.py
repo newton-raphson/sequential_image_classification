@@ -1,6 +1,7 @@
 # from executor.executor import Executor
 from model.networks import AutoEncoder,SequentialModel
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
+import seaborn as sns
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
@@ -91,7 +92,14 @@ def evaluate_sequential(model, autoencoder, post_process_path, device, test_data
     accuracy = accuracy_score(true_labels, predicted_labels)
     
     # Compute confusion matrix
-    confusion_mat = confusion_matrix(true_labels, predicted_labels)
+    cm = confusion_matrix(y_true=true_labels, y_pred=predicted_labels)
+    row_sums = cm.sum(axis=1, keepdims=True)
+    cm_percent = (cm / row_sums) * 100
+    sns.heatmap(cm_percent, annot=True, cmap='inferno', fmt='.1f')
+    plt.xlabel("Prediction")
+    plt.ylabel("Actual Value")
+    plt.savefig(os.path.join(post_process_path, f"cm.png"))
+    plt.close()
     
     # Compute classification report
     class_report = classification_report(true_labels, predicted_labels)
@@ -102,10 +110,10 @@ def evaluate_sequential(model, autoencoder, post_process_path, device, test_data
         file.write(f'Accuracy: {accuracy}')
 
     # Save the confusion matrix to a text file
-    confusion_mat_file_path = os.path.join(post_process_path, 'confusion_matrix.txt')
-    with open(confusion_mat_file_path, 'w') as file:
-        file.write('Confusion Matrix:\n')
-        file.write(str(confusion_mat))
+    # confusion_mat_file_path = os.path.join(post_process_path, 'confusion_matrix.txt')
+    # with open(confusion_mat_file_path, 'w') as file:
+    #     file.write('Confusion Matrix:\n')
+    #     file.write(str(cm))
 
     # Save the classification report to a text file
     class_report_file_path = os.path.join(post_process_path, 'classification_report.txt')
@@ -113,4 +121,3 @@ def evaluate_sequential(model, autoencoder, post_process_path, device, test_data
         file.write('Classification Report:\n')
         file.write(class_report)
 
-    return accuracy, confusion_mat, class_report

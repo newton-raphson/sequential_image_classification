@@ -44,23 +44,19 @@ class Decoder(torch.nn.Module):
         x = torch.relu(self.deconv2(x))
         x = torch.relu(self.deconv3(x))
         x = torch.relu(self.deconv4(x))
-        x = torch.sigmoid(x)  # Use sigmoid to scale output to [0, 1]
+        # x = torch.sigmoid(x)
         return x
 
     
 class Classifier(torch.nn.Module):
-    def __init__(self,image_size=(250,100),latent_dim=252,hidden_dim=100):
+    def __init__(self,latent_dim=252,hidden_dim=100):
         super(Classifier,self).__init__()
-        self.encoder = Encoder(image_size=image_size,latent_dim=latent_dim)
         self.fc1 = torch.nn.Linear(latent_dim,hidden_dim)
         self.fc2 = torch.nn.Linear(hidden_dim,1)
         self.sigmoid = torch.nn.Sigmoid()
 
     def forward(self,x):
-        latent = self.encoder(x)
-        # print(f"{latent.shape}")
-        latent = latent.view(-1,28*9)
-        out1 = self.fc1(latent)
+        out1 = self.fc1(x)
         out2 = self.fc2(out1)
         # returns the classification either 0 or 1
         return self.sigmoid(out2)

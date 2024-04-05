@@ -19,14 +19,14 @@ python main.py [path_to_your_config]
  For Autoencoder`[your_config.ini]` file:
 ```ini
 [Type]
-encoder = True
+type = autoencoder
 [PostProcess]
 post_process = False
 ```
 For Sequential Model`[your_config.ini]` file:
 ```ini
 [Type]
-encoder = False
+type = sequential
 ae_path = "path_to_your_autoencoder/models"
 [PostProcess]
 post_process = False
@@ -36,19 +36,20 @@ post_process = False
  For Autoencoder`[your_config.ini]` file:
 ```ini
 [Type]
-encoder = True
+type = autoencoder
 [PostProcess]
 post_process = True
 ```
 For Sequential Model`[your_config.ini]` file:
 ```ini
 [Type]
-encoder = False
+type = sequential
 ae_path = "path_to_your_autoencoder/models"
 [PostProcess]
 post_process = True
 ```
-
+## HYPERPARAMETER ANALYSIS DIRECT CLASSIFICATION
+[DIRECT CLASSIFICATION](./notebooks/)
 
 ## Courtesy
 Dr Soumik Sarkar

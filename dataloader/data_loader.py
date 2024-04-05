@@ -31,15 +31,17 @@ def load_data(data_path, config, device):
 
     # get train_x
     train_x = np.array(data.get("train_set_x"))
-    train_x = train_x[:,0:20000]/255.0
+    train_x = train_x
     # get train_y
     train_y = np.array(data.get("train_set_y"))
-    train_y = train_y[:20000]
+    train_y = train_y
     print(f"The length of train_X is {len(train_x)}")
     print(f"The length of train_Y is {len(train_y)}")
     # we need to transpose train_x 
     train_x = train_x.T
     train_x= train_x.reshape(-1,1,250,100)
+    # train_x = np.array([image / np.max(image) for image in train_x])
+
 
     print(f"The shape is {train_x.shape}")
 
@@ -47,20 +49,21 @@ def load_data(data_path, config, device):
     valid_x = np.array(data.get("valid_set_x"))
     # get train_y
     valid_y = np.array(data.get("valid_set_y"))
-    valid_x = valid_x[:,0:20000]/255.0
-    valid_y = valid_y[:20000]
+    
+    valid_y = valid_y
     print(f"The length of valid_X is {len(train_x)}")
     print(f"The length of valid_Y is {len(train_y)}")
 
     # we need to transpose train_x 
     valid_x = valid_x.T
     valid_x= valid_x.reshape(-1,1,250,100)
-
+    # valid_x = np.array([image / np.max(image) for image in valid_x])
+    
     print("We are here bro")
-    X = torch.tensor(train_x[:1000], dtype=torch.float32)
-    Y = torch.tensor(train_y[:1000], dtype=torch.float32)
-    val_X = torch.tensor(valid_x[:1000], dtype=torch.float32)
-    val_Y = torch.tensor(valid_y[:1000], dtype=torch.float32)
+    X = torch.tensor(train_x, dtype=torch.float32)
+    Y = torch.tensor(train_y, dtype=torch.float32)
+    val_X = torch.tensor(valid_x, dtype=torch.float32)
+    val_Y = torch.tensor(valid_y, dtype=torch.float32)
     print("We are here bro")
 
     training_dataset = torch.utils.data.TensorDataset(X, Y)
@@ -86,19 +89,22 @@ def load_test_data(data_path,config,device):
 
     # Get test_x
     test_x = np.array(data.get("test_set_x"))
-    test_x = test_x[:, 0:20000] / 255.0  # Normalize if needed
+    test_x = test_x # Normalize if needed
 
     # Get test_y
     test_y = np.array(data.get("test_set_y"))
-    test_y = test_y[:20000]
+    test_y = test_y
 
     # Transpose and reshape test_x
     test_x = test_x.T
     test_x = test_x.reshape(-1, 1, 250, 100)
 
+    # test_x = np.array([image / np.max(image) for image in test_x])
+
+
     # Convert to PyTorch tensors
-    X = torch.tensor(test_x[:1000], dtype=torch.float32)
-    Y = torch.tensor(test_y[:1000], dtype=torch.float32)
+    X = torch.tensor(test_x, dtype=torch.float32)
+    Y = torch.tensor(test_y, dtype=torch.float32)
 
     # Create a TensorDataset and DataLoader
     test_dataset = torch.utils.data.TensorDataset(X, Y)

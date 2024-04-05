@@ -28,14 +28,19 @@ class Executor:
 
         # this folder will contain all the models for particular number of data-points
         self.data_path = config.data_path
-        if config.train_encoder:
+        if config.type == "autoencoder":
             print(f"TRAINING THE AUTOENCODER")
             self.model_path = create_directory(os.path.join(self.main_path,"autoencoder"))
             self.loss_path = create_directory(os.path.join(self.model_path,"loss_bce"))
-        else:
+        if config.type == "direct_classification":
+            print(f"TRAINING THE DIRECT CLASSIFICATION MODEL")
+            self.model_path = create_directory(os.path.join(self.main_path,"direct_classification"))
+            self.loss_path = create_directory(os.path.join(self.model_path,"bce_loss"))
+        if config.type == "sequential":
             print(f"TRAINING THE SEQUENTIAL MODEL")
             self.model_path = create_directory(os.path.join(self.main_path,"sequential"))
             self.loss_path = create_directory(os.path.join(self.model_path,"mse_loss"))
+        
         self.train_path = create_directory(os.path.join(self.loss_path,f"lr_{config.lr},epochs_{config.epochs},min_epochs_{config.minepochs},batch_size_{config.batchsize}"))
 
         # inside the train_path create a folder to save the models for checkpointing
@@ -50,8 +55,11 @@ class Executor:
         # define the model
         self.model = AutoEncoder()
         self.loss = torch.nn.CrossEntropyLoss()
-        if(not config.train_encoder):
+        if(config.type=="sequential"):
             self.model = SequentialModel(input_size=252,hidden_size=config.hidden_size,num_layers=config.num_layers)
+            self.loss = torch.nn.CrossEntropyLoss()
+        if(config.type=="direct_classification"):
+            self.model = SequentialModel()
             self.loss = torch.nn.CrossEntropyLoss()
 
         print(f"Cuda is {torch.cuda.is_available()}")
@@ -86,7 +94,7 @@ class Executor:
             torch.cuda.empty_cache()
             for batch, (x_batch, _) in enumerate(training_dataloader):
                 x_compute = self.model(x_batch.to(self.device))
-                loss = torch.nn.functional.mse_loss(x_compute,x_batch)
+                loss = torch.nn.functional.mse_loss(x_compute,x_batch.to(self.device))
                 print(f"loss is {loss}")
                 optimizer.zero_grad()
                 loss.backward()
@@ -102,8 +110,10 @@ class Executor:
             val_loss = 0
             self.model.eval()
             for batch, (x_batch, y_batch) in enumerate(validation_dataloader):
-                loss = torch.nn.functional.mse_loss(self.model(x_batch.to(self.device)), x_batch)
+                x_compute = self.model(x_batch.to(self.device))
+                loss = torch.nn.functional.mse_loss(x_compute,x_batch.to(self.device))
                 val_loss += loss.item()
+                del x_batch
             val_loss = val_loss/len(validation_dataloader)
             val_loss_per_epoch.append(val_loss)
             self.model.train()
@@ -140,6 +150,103 @@ class Executor:
                 plt.close(fig)
 
         # save the model every 
+    def train_direct_classification(self):
+        training_dataloader, validation_dataloader = load_data(self.data_path,self.config,self.device)     
+        self.model.to(self.device)
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=self.config.lr)
+        # ##################### ADDED FOR TESTING ############################
+        scheduler = StepLR(optimizer, step_size=50, gamma=0.1)
+        # ####################################################################
+
+        # load the autoencoder 
+
+        auto_encoder = AutoEncoder()
+        # this loads the autoencoder
+        auto_encoder=Executor.load_model_ae(auto_encoder,self.config.ae_path,best=True)  
+        # but we just need the encoder bath 
+        encoder = auto_encoder.encoder
+        encoder.to(self.device)
+        # we don't need gradients of encoder
+        encoder.eval()
+        if self.device == 'cuda':
+            torch.cuda.empty_cache()
+        if self.config.contd:
+            # load the best model from the model_save_path
+            self.model, optimizer, start_epoch, loss_per_epoch, best_val_loss,val_loss_per_epoch =\
+                Executor.load_model(self.model,optimizer,self.model_save_path,best=True)  
+        else:
+            start_epoch = 0
+            loss_per_epoch = []
+            val_loss_per_epoch = []
+            best_val_loss = float('inf')
+
+        self.model.train()
+        counter = 0
+        for i in range(start_epoch, int(self.config.epochs)):
+            loss=0
+            train_loss = 0
+            val_loss = 0
+            torch.cuda.empty_cache()
+            for batch, (x_batch, y_batch) in enumerate(training_dataloader):
+                # encode the x_batch
+                x_encoded = encoder(x_batch.to(self.device))
+                print(f"x_compute shape is {x_encoded.shape}") #should be of shape 252
+                y_pred = self.model(x_encoded)
+                loss = torch.nn.functional.binary_cross_entropy(y_pred,y_batch.to(self.device))
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+                train_loss += loss.item()
+                del x_batch
+                del x_encoded
+                del y_pred
+                del y_batch
+            # take a step in the scheduler
+            scheduler.step()
+            torch.cuda.empty_cache()
+            train_loss = train_loss/len(training_dataloader)
+            loss_per_epoch.append(train_loss)
+            val_loss = 0
+            self.model.eval()
+            for batch, (x_batch, y_batch) in enumerate(validation_dataloader):
+                loss = torch.nn.functional.binary_cross_entropy(self.model(encoder(x_batch.to(self.device))), y_batch.to(self.device))
+                del x_batch
+                del y_batch
+                val_loss += loss.item()
+            val_loss = val_loss/len(validation_dataloader)
+            val_loss_per_epoch.append(val_loss)
+            self.model.train()
+            # write this to a file 
+            str_to_write = f"Epoch {i+1}/{self.config.epochs}: train loss {train_loss} validation loss {val_loss}\n"
+            print(str_to_write)
+            with open(os.path.join(self.train_path,"train_loss.txt"),"a") as f:
+                f.write(str_to_write)
+
+            if val_loss < best_val_loss:
+                best_val_loss = val_loss
+                counter = 0
+                # save the model
+                # code to save the model 
+                Executor.save_model(self.model, optimizer, loss_per_epoch, i,best_val_loss,val_loss_per_epoch,self.model_save_path,best=True)
+            else:
+                # increase the counter by 1
+                counter += 1
+            if counter >= self.config.patience and i >= self.config.minepochs:
+                print("Early stopping: No improvement for the last {} epochs".format(self.config.patience))
+                Executor.save_model(self.model, optimizer, loss_per_epoch, i,best_val_loss,val_loss_per_epoch,self.model_save_path,best=False)
+                break
+            if i%self.config.checkpointing == 0:
+                # save the model every 
+                Executor.save_model(self.model, optimizer, loss_per_epoch, i,best_val_loss,val_loss_per_epoch,self.model_save_path,best=False)
+                fig, ax = plt.subplots()
+                ax.plot(loss_per_epoch, label='train_loss')
+                ax.plot(val_loss_per_epoch, label='val_loss')
+                ax.set_title('Loss vs Epochs')
+                ax.set_xlabel('Epochs')
+                ax.set_ylabel('Loss')
+                ax.legend() 
+                fig.savefig(os.path.join(self.plot_save_path, f"loss{i}.png"))
+                plt.close(fig)
     def train_sequential(self):
         training_dataloader, validation_dataloader = load_data(self.data_path,self.config,self.device)     
         self.model.to(self.device)
@@ -387,8 +494,11 @@ class Executor:
             return model
     def run(self):
         print("Running the executor")
-        if self.config.train_encoder:
+        if self.config.type == "autoencoder":
             self.train()
+            return
+        if self.config.type == "direct_classification":
+            self.train_direct_classification()
             return
         else:
             self.train_sequential()
