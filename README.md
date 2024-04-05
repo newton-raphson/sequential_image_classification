@@ -48,8 +48,11 @@ ae_path = "path_to_your_autoencoder/models"
 [PostProcess]
 post_process = True
 ```
-## HYPERPARAMETER ANALYSIS DIRECT CLASSIFICATION
-[DIRECT CLASSIFICATION](./notebooks/)
+## HYPERPARAMETER ANALYSIS DIRECT CLASSIFICATION PART 1
+[DIRECT CLASSIFICATION](./notebooks/Assignment3_part1_finished.ipynb)
+
+## TRAINED ENCODER AND SEQUENTIAL MODEL FOR PART2
+[WEIGHTS](./EXPERIMENTALMODELS)
 
 ## Courtesy
 Dr Soumik Sarkar
